@@ -83,16 +83,14 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
     try {
       const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
+  method: "POST",
+  headers: {
     "Content-Type": "application/json",
   },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }]
-        })
-      });
+  body: JSON.stringify({
+    message: prompt,
+  }),
+});
       const data = await res.json();
       const text = data.content?.find(b => b.type === "text")?.text || "";
       const clean = text.replace(/```json|```/g, "").trim();
