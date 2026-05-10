@@ -7,37 +7,39 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "mixtral-8x7b-32768",
+        temperature: 0.2,
         messages: [
           {
             role: "system",
-            content: "You are a logistics AI analyst. You ONLY respond with valid raw JSON. No markdown, no backticks, no explanation. Just the JSON object."
+            content: "You are a logistics AI analyst. Always respond with ONLY a raw JSON object. No markdown, no backticks, no extra text before or after. Just the JSON."
           },
           ...req.body.messages
-        ],
-        temperature: 0.3,
-        response_format: { type: "json_object" }
+        ]
       })
     });
 
-    const data = await response.json();
+    const groqText = await groqRes.text();
 
-    if (!data.choices || !data.choices[0]) {
-      console.error("Groq response error:", JSON.stringify(data));
-      return res.status(500).json({ error: "Invalid Groq response", detail: data });
+    if (!groqRes.ok) {
+      console.error("Groq API error:", groqRes.status, groqText);
+      return res.status(500).json({ error: "Groq API failed", detail: groqText });
     }
 
-    const text = data.choices[0].message.content;
+    const groqData = JSON.parse(groqText);
+    const text = groqData.choices?.[0]?.message?.content || "";
+
     res.status(200).json({ content: [{ type: "text", text }] });
+
   } catch (err) {
-    console.error("Server error:", err);
-    res.status(500).json({ error: "API call failed", detail: err.message });
+    console.error("Handler error:", err.message);
+    res.status(500).json({ error: err.message });
   }
 }
