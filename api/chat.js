@@ -15,15 +15,29 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "llama3-8b-8192",
-        messages: req.body.messages
+        messages: [
+          {
+            role: "system",
+            content: "You are a logistics AI analyst. You ONLY respond with valid raw JSON. No markdown, no backticks, no explanation. Just the JSON object."
+          },
+          ...req.body.messages
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
       })
     });
 
     const data = await response.json();
+
+    if (!data.choices || !data.choices[0]) {
+      console.error("Groq response error:", JSON.stringify(data));
+      return res.status(500).json({ error: "Invalid Groq response", detail: data });
+    }
+
     const text = data.choices[0].message.content;
     res.status(200).json({ content: [{ type: "text", text }] });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "API call failed" });
+    console.error("Server error:", err);
+    res.status(500).json({ error: "API call failed", detail: err.message });
   }
 }
