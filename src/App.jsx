@@ -92,8 +92,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
   }),
 });
       const data = await res.json();
-      const text = data.content?.find(b => b.type === "text")?.text || "";
-      const clean = text.replace(/```json|```/g, "").trim();
+      const clean = data.reply.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
       setResults(r => ({ ...r, [shp.id]: parsed }));
     } catch (e) {
