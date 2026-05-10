@@ -1,45 +1,38 @@
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+import Groq from "groq-sdk";
 
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+export default async function handler(req, res) {
+  // Allow only POST requests
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      error: "Method not allowed",
+    });
+  }
 
   try {
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        temperature: 0.2,
+    const { message } = req.body;
+
+    const completion =
+      await groq.chat.completions.create({
         messages: [
           {
-            role: "system",
-            content: "You are a logistics AI analyst. Always respond with ONLY a raw JSON object. No markdown, no backticks, no extra text before or after. Just the JSON."
+            role: "user",
+            content: message,
           },
-          ...req.body.messages
-        ]
-      })
+        ],
+        model: "llama-3.3-70b-versatile",
+      });
+
+    return res.status(200).json({
+      reply:
+        completion.choices[0].message.content,
     });
-
-    const groqText = await groqRes.text();
-
-    if (!groqRes.ok) {
-      console.error("Groq API error:", groqRes.status, groqText);
-      return res.status(500).json({ error: "Groq API failed", detail: groqText });
-    }
-
-    const groqData = JSON.parse(groqText);
-    const text = groqData.choices?.[0]?.message?.content || "";
-
-    res.status(200).json({ content: [{ type: "text", text }] });
-
-  } catch (err) {
-    console.error("Handler error:", err.message);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 }
